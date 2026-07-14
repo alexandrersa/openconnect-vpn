@@ -1,0 +1,105 @@
+name: Release binaries
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*"
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  linux-ubuntu:
+    name: Linux Ubuntu x86_64
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - run: cargo build --release
+      - run: mkdir -p dist && cp target/release/openconnect-vpn-gui dist/openconnect-vpn-gui-linux-ubuntu-x86_64
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux-ubuntu-x86_64
+          path: dist/openconnect-vpn-gui-linux-ubuntu-x86_64
+          if-no-files-found: error
+
+  linux-distro:
+    name: Linux ${{ matrix.distro }} x86_64
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - distro: archlinux
+            image: archlinux:base-devel
+            install: pacman -Syu --needed --noconfirm git nodejs rust pkgconf libx11 libxcb libxkbcommon wayland mesa
+          - distro: fedora
+            image: fedora:latest
+            install: dnf install -y git nodejs rust cargo gcc pkgconf-pkg-config libX11-devel libxcb-devel libxkbcommon-devel wayland-devel mesa-libEGL-devel
+          - distro: void
+            image: ghcr.io/void-linux/void-glibc-full:latest
+            install: xbps-install -Syu xbps && xbps-install -Syu && xbps-install -y git nodejs rust cargo gcc pkg-config libX11-devel libxcb-devel libxkbcommon-devel wayland-devel MesaLib-devel
+    container:
+      image: ${{ matrix.image }}
+    steps:
+      - name: Install build dependencies
+        run: ${{ matrix.install }}
+      - uses: actions/checkout@v4
+      - run: cargo build --release
+      - run: mkdir -p dist && cp target/release/openconnect-vpn-gui dist/openconnect-vpn-gui-linux-${{ matrix.distro }}-x86_64
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux-${{ matrix.distro }}-x86_64
+          path: dist/openconnect-vpn-gui-linux-${{ matrix.distro }}-x86_64
+          if-no-files-found: error
+
+  windows:
+    name: Windows x86_64
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - run: cargo build --release
+      - run: mkdir dist && copy target\release\openconnect-vpn-gui.exe dist\openconnect-vpn-gui-windows-x86_64.exe
+        shell: cmd
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-x86_64
+          path: dist/openconnect-vpn-gui-windows-x86_64.exe
+          if-no-files-found: error
+
+  macos-universal:
+    name: macOS universal
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin,x86_64-apple-darwin
+      - run: cargo build --release --target aarch64-apple-darwin
+      - run: cargo build --release --target x86_64-apple-darwin
+      - run: mkdir -p dist
+      - run: lipo -create -output dist/openconnect-vpn-gui-macos-universal target/aarch64-apple-darwin/release/openconnect-vpn-gui target/x86_64-apple-darwin/release/openconnect-vpn-gui
+      - uses: actions/upload-artifact@v4
+        with:
+          name: macos-universal
+          path: dist/openconnect-vpn-gui-macos-universal
+          if-no-files-found: error
+
+  freebsd:
+    name: FreeBSD x86_64
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-unknown-freebsd
+      - uses: taiki-e/install-action@cross
+      - run: cross build --release --target x86_64-unknown-freebsd
+      - run: mkdir -p dist && cp target/x86_64-unknown-freebsd/release/openconnect-vpn-gui dist/openconnect-vpn-gui-freebsd-x86_64
+      - uses: actions/upload-artifact@v4
+        with:
+          name: freebsd-x86_64
+          path: dist/openconnect-vpn-gui-freebsd-x86_64
+          if-no-files-found: error

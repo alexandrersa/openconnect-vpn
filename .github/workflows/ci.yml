@@ -1,0 +1,76 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - master
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  quality:
+    name: Rust quality gate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - run: cargo fmt --check
+      - run: cargo test --all-targets
+      - run: cargo clippy --all-targets -- -D warnings
+
+  native-build:
+    name: Native build / ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest
+          - windows-latest
+          - macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - run: cargo build --release
+
+  linux-distro-build:
+    name: Linux distro build / ${{ matrix.distro }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - distro: archlinux
+            image: archlinux:base-devel
+            install: pacman -Syu --needed --noconfirm git nodejs rust pkgconf libx11 libxcb libxkbcommon wayland mesa
+          - distro: fedora
+            image: fedora:latest
+            install: dnf install -y git nodejs rust cargo gcc pkgconf-pkg-config libX11-devel libxcb-devel libxkbcommon-devel wayland-devel mesa-libEGL-devel
+          - distro: void
+            image: ghcr.io/void-linux/void-glibc-full:latest
+            install: xbps-install -Syu xbps && xbps-install -Syu && xbps-install -y git nodejs rust cargo gcc pkg-config libX11-devel libxcb-devel libxkbcommon-devel wayland-devel MesaLib-devel
+    container:
+      image: ${{ matrix.image }}
+    steps:
+      - name: Install build dependencies
+        run: ${{ matrix.install }}
+      - uses: actions/checkout@v4
+      - run: cargo test --all-targets
+      - run: cargo build --release
+
+  freebsd-check:
+    name: FreeBSD cross check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-unknown-freebsd
+      - uses: taiki-e/install-action@cross
+      - run: cross check --target x86_64-unknown-freebsd
