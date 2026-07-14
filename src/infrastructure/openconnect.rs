@@ -11,7 +11,10 @@ use std::{
 use zeroize::Zeroizing;
 
 use crate::{
-    application::{SessionStatus, VpnBackend, VpnBackendError, VpnBackendResult, VpnSession},
+    application::{
+        BackendErrorMessage, SessionStatus, VpnBackend, VpnBackendError, VpnBackendResult,
+        VpnSession,
+    },
     domain::{Credentials, VpnProtocol},
 };
 
@@ -51,8 +54,8 @@ impl OpenConnectBackend {
         if cfg!(target_os = "linux") {
             Ok(())
         } else {
-            Err(VpnBackendError::new(
-                "Este binário foi gerado para este sistema, mas a conexão automática com privilégio administrativo ainda está implementada apenas no Linux.",
+            Err(VpnBackendError::localized(
+                BackendErrorMessage::UnsupportedPlatform,
             ))
         }
     }
@@ -72,9 +75,9 @@ impl OpenConnectBackend {
             .stderr(Stdio::piped())
             .spawn()
             .map_err(|_| {
-                ConnectionAttemptError::Local(
-                    "Não foi possível abrir a autorização do sistema. Verifique o Polkit.".into(),
-                )
+                ConnectionAttemptError::Local(VpnBackendError::localized(
+                    BackendErrorMessage::SystemAuthorizationUnavailable,
+                ))
             })?;
 
         let command_log = Arc::new(Mutex::new(Vec::new()));
@@ -143,13 +146,13 @@ impl VpnBackend for OpenConnectBackend {
         self.ensure_supported_platform()?;
 
         if !command_exists(self.config.openconnect) {
-            return Err(VpnBackendError::new(
-                "O OpenConnect não foi encontrado. Instale o pacote openconnect.",
+            return Err(VpnBackendError::localized(
+                BackendErrorMessage::OpenConnectNotFound,
             ));
         }
         if !command_exists(self.config.pkexec) {
-            return Err(VpnBackendError::new(
-                "O pkexec não foi encontrado. Instale o Polkit antes de conectar.",
+            return Err(VpnBackendError::localized(
+                BackendErrorMessage::PkexecNotFound,
             ));
         }
 
@@ -177,12 +180,12 @@ impl VpnBackend for OpenConnectBackend {
         let (server, protocol, username, password) = credentials.into_parts();
         match self.start_at_endpoint(server.as_str(), protocol, username.as_str(), &password) {
             Ok(connection) => Ok(connection),
-            Err(ConnectionAttemptError::Cancelled) => Err(VpnBackendError::new(
-                "A autorização do sistema foi cancelada.",
+            Err(ConnectionAttemptError::Cancelled) => Err(VpnBackendError::localized(
+                BackendErrorMessage::AuthorizationCancelled,
             )),
-            Err(ConnectionAttemptError::Local(error)) => Err(VpnBackendError::new(error)),
-            Err(ConnectionAttemptError::Unavailable) => Err(VpnBackendError::new(
-                "Não foi possível estabelecer conexão com o servidor informado. Verifique servidor, protocolo, credenciais, autorização do sistema e acesso à internet.",
+            Err(ConnectionAttemptError::Local(error)) => Err(error),
+            Err(ConnectionAttemptError::Unavailable) => Err(VpnBackendError::localized(
+                BackendErrorMessage::ConnectionUnavailable,
             )),
         }
     }
@@ -196,15 +199,17 @@ impl VpnBackend for OpenConnectBackend {
             .stderr(Stdio::piped())
             .output()
             .map_err(|error| {
-                VpnBackendError::new(format!("Não foi possível iniciar o Polkit: {error}"))
+                VpnBackendError::localized_with_detail(
+                    BackendErrorMessage::PolkitStartFailed,
+                    error.to_string(),
+                )
             })?;
 
         if !output.status.success() {
-            return Err(VpnBackendError::new(command_error(
-                "Não foi possível encerrar a VPN",
-                &output.stderr,
-                b"",
-            )));
+            return Err(VpnBackendError::localized_with_detail(
+                BackendErrorMessage::DisconnectFailed,
+                command_output(&output.stderr, b""),
+            ));
         }
 
         for _ in 0..10 {
@@ -215,8 +220,8 @@ impl VpnBackend for OpenConnectBackend {
             thread::sleep(Duration::from_millis(250));
         }
 
-        Err(VpnBackendError::new(
-            "O pedido de desconexão foi enviado, mas o túnel ainda está ativo. Tente novamente.",
+        Err(VpnBackendError::localized(
+            BackendErrorMessage::DisconnectStillActive,
         ))
     }
 
@@ -245,8 +250,8 @@ impl VpnSession for OpenConnectSession {
             Ok(Some(_)) => return Ok(SessionStatus::Exited),
             Ok(None) => {}
             Err(_) => {
-                return Err(VpnBackendError::new(
-                    "Não foi possível acompanhar o processo do OpenConnect.",
+                return Err(VpnBackendError::localized(
+                    BackendErrorMessage::ProcessMonitoringFailed,
                 ));
             }
         }
@@ -261,7 +266,7 @@ impl VpnSession for OpenConnectSession {
 
 enum ConnectionAttemptError {
     Cancelled,
-    Local(String),
+    Local(VpnBackendError),
     Unavailable,
 }
 
@@ -292,9 +297,13 @@ fn read_pid_file(path: PathBuf) -> Option<u32> {
     value.trim().parse().ok().filter(|pid: &u32| *pid > 1)
 }
 
-fn store_vpn_pid(pid: u32) -> Result<(), String> {
-    fs::write(user_pid_file(), format!("{pid}\n"))
-        .map_err(|error| format!("Não foi possível gravar o estado local da VPN: {error}"))
+fn store_vpn_pid(pid: u32) -> VpnBackendResult<()> {
+    fs::write(user_pid_file(), format!("{pid}\n")).map_err(|error| {
+        VpnBackendError::localized_with_detail(
+            BackendErrorMessage::StateStoreFailed,
+            error.to_string(),
+        )
+    })
 }
 
 fn clear_vpn_pid() {
@@ -381,22 +390,17 @@ fn connection_exit_error<T>(
     if output.is_empty() {
         Err(ConnectionAttemptError::Unavailable)
     } else {
-        Err(ConnectionAttemptError::Local(command_error(
-            "Não foi possível iniciar a VPN",
-            &output,
-            b"",
-        )))
+        Err(ConnectionAttemptError::Local(
+            VpnBackendError::localized_with_detail(
+                BackendErrorMessage::ConnectionStartFailed,
+                command_output(&output, b""),
+            ),
+        ))
     }
 }
 
 pub fn command_error(prefix: &str, stderr: &[u8], stdout: &[u8]) -> String {
-    let raw = String::from_utf8_lossy(stderr);
-    let raw = if raw.trim().is_empty() {
-        String::from_utf8_lossy(stdout)
-    } else {
-        raw
-    };
-    let message = raw.split_whitespace().collect::<Vec<_>>().join(" ");
+    let message = command_output(stderr, stdout);
     if message.is_empty() {
         prefix.into()
     } else {
@@ -405,4 +409,14 @@ pub fn command_error(prefix: &str, stderr: &[u8], stdout: &[u8]) -> String {
             message.chars().take(300).collect::<String>()
         )
     }
+}
+
+fn command_output(stderr: &[u8], stdout: &[u8]) -> String {
+    let raw = String::from_utf8_lossy(stderr);
+    let raw = if raw.trim().is_empty() {
+        String::from_utf8_lossy(stdout)
+    } else {
+        raw
+    };
+    raw.split_whitespace().collect::<Vec<_>>().join(" ")
 }

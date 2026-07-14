@@ -28,7 +28,13 @@ pub fn centered_action_button(
     .inner
 }
 
-pub fn draw_connection_status(ui: &mut egui::Ui, state: ConnectionState, detail: &str, width: f32) {
+pub fn draw_connection_status(
+    ui: &mut egui::Ui,
+    state_label: &str,
+    state: ConnectionState,
+    detail: &str,
+    width: f32,
+) {
     ui.allocate_ui_with_layout(
         egui::vec2(width, 74.0),
         egui::Layout::top_down(egui::Align::Center),
@@ -37,7 +43,7 @@ pub fn draw_connection_status(ui: &mut egui::Ui, state: ConnectionState, detail:
                 ui,
                 width,
                 18.0,
-                egui::RichText::new(state.label())
+                egui::RichText::new(state_label)
                     .size(13.0)
                     .color(egui::Color32::from_rgb(51, 70, 59)),
             );

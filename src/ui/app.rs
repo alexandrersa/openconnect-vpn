@@ -11,11 +11,12 @@ use eframe::{App, Frame, egui};
 use zeroize::Zeroizing;
 
 use crate::{
-    application::{SessionStatus, VpnBackend, VpnBackendResult, VpnSession},
+    application::{SessionStatus, VpnBackend, VpnBackendError, VpnBackendResult, VpnSession},
     domain::{
         ConnectionState, CredentialError, Credentials, PrimaryAction, ServerAddress, Username,
         VpnProtocol, primary_action_for,
     },
+    i18n::Language,
     ui::{
         theme::FORM_WIDTH,
         widgets::{centered_action_button, centered_label, draw_connection_status},
@@ -29,14 +30,36 @@ enum WorkerMessage {
     Disconnected(VpnBackendResult<()>),
 }
 
+#[derive(Clone, Copy)]
+enum StatusMessage {
+    AlreadyConnected,
+    EnterCredentials,
+    AuthorizeOperation,
+    NoConnection,
+    InvalidStateFile,
+    ClosingTunnel,
+    ConnectionVerified,
+    ConnectionUnverified,
+    VpnDisconnected,
+    OperationInterrupted,
+    ConnectionEnded,
+}
+
+enum StatusDetail {
+    Message(StatusMessage),
+    CredentialError(CredentialError),
+    BackendError(VpnBackendError),
+}
+
 pub struct VpnApp {
     backend: Arc<dyn VpnBackend>,
     server: String,
     protocol: VpnProtocol,
     username: String,
     password: Zeroizing<String>,
+    language: Language,
     state: ConnectionState,
-    detail: String,
+    detail: StatusDetail,
     worker: Option<Receiver<WorkerMessage>>,
     active_session: Option<Box<dyn VpnSession>>,
     last_poll: Instant,
@@ -52,15 +75,16 @@ impl VpnApp {
             protocol: VpnProtocol::default(),
             username: String::new(),
             password: Zeroizing::new(String::new()),
+            language: Language::default(),
             state: if connected {
                 ConnectionState::Connected
             } else {
                 ConnectionState::Disconnected
             },
             detail: if connected {
-                "Uma conexão VPN já está ativa neste computador.".into()
+                StatusDetail::Message(StatusMessage::AlreadyConnected)
             } else {
-                "Informe servidor, usuário e senha para iniciar.".into()
+                StatusDetail::Message(StatusMessage::EnterCredentials)
             },
             worker: None,
             active_session: None,
@@ -102,13 +126,13 @@ impl VpnApp {
 
         if let Err(error) = self.backend.preflight() {
             self.state = ConnectionState::Error;
-            self.detail = error.to_string();
+            self.detail = StatusDetail::BackendError(error);
             return;
         }
 
         if self.backend.is_connected() {
             self.state = ConnectionState::Connected;
-            self.detail = "Uma conexão VPN já está ativa neste computador.".into();
+            self.detail = StatusDetail::Message(StatusMessage::AlreadyConnected);
             return;
         }
 
@@ -122,7 +146,7 @@ impl VpnApp {
         let (sender, receiver) = mpsc::channel();
         self.worker = Some(receiver);
         self.state = ConnectionState::Connecting;
-        self.detail = "Autorize a operação no diálogo do sistema, se ele aparecer.".into();
+        self.detail = StatusDetail::Message(StatusMessage::AuthorizeOperation);
 
         thread::spawn(move || {
             let result = backend.connect(credentials);
@@ -138,14 +162,13 @@ impl VpnApp {
             .or_else(|| self.backend.active_pid())
         else {
             self.state = ConnectionState::Disconnected;
-            self.detail = "Não há conexão ativa para encerrar.".into();
+            self.detail = StatusDetail::Message(StatusMessage::NoConnection);
             return;
         };
 
         if !self.backend.is_managed_process(pid) {
             self.state = ConnectionState::Error;
-            self.detail =
-                "O arquivo de estado da VPN está inválido. Nenhum processo foi encerrado.".into();
+            self.detail = StatusDetail::Message(StatusMessage::InvalidStateFile);
             return;
         }
 
@@ -153,7 +176,7 @@ impl VpnApp {
         let (sender, receiver) = mpsc::channel();
         self.worker = Some(receiver);
         self.state = ConnectionState::Disconnecting;
-        self.detail = "Encerrando o túnel VPN com segurança…".into();
+        self.detail = StatusDetail::Message(StatusMessage::ClosingTunnel);
 
         thread::spawn(move || {
             let result = backend.disconnect(pid);
@@ -163,7 +186,7 @@ impl VpnApp {
 
     fn show_credential_error(&mut self, error: CredentialError) {
         self.state = ConnectionState::Error;
-        self.detail = error.to_string();
+        self.detail = StatusDetail::CredentialError(error);
     }
 
     fn handle_worker_messages(&mut self) {
@@ -178,32 +201,32 @@ impl VpnApp {
                 self.active_session = Some(session);
                 self.state = ConnectionState::Connected;
                 self.detail = if verified {
-                    "VPN conectada. O tráfego definido pelo servidor está ativo.".into()
+                    StatusDetail::Message(StatusMessage::ConnectionVerified)
                 } else {
-                    "OpenConnect iniciado em primeiro plano. Se o acesso interno não abrir, desconecte e confira as credenciais ou a rede.".into()
+                    StatusDetail::Message(StatusMessage::ConnectionUnverified)
                 };
             }
             Ok(WorkerMessage::Connected(Err(error))) => {
                 self.worker = None;
                 self.state = ConnectionState::Error;
-                self.detail = error.to_string();
+                self.detail = StatusDetail::BackendError(error);
             }
             Ok(WorkerMessage::Disconnected(Ok(()))) => {
                 self.worker = None;
                 self.clear_active_session();
                 self.state = ConnectionState::Disconnected;
-                self.detail = "VPN desconectada.".into();
+                self.detail = StatusDetail::Message(StatusMessage::VpnDisconnected);
             }
             Ok(WorkerMessage::Disconnected(Err(error))) => {
                 self.worker = None;
                 self.state = ConnectionState::Error;
-                self.detail = error.to_string();
+                self.detail = StatusDetail::BackendError(error);
             }
             Err(TryRecvError::Empty) => {}
             Err(TryRecvError::Disconnected) => {
                 self.worker = None;
                 self.state = ConnectionState::Error;
-                self.detail = "A operação de conexão foi interrompida inesperadamente.".into();
+                self.detail = StatusDetail::Message(StatusMessage::OperationInterrupted);
             }
         }
     }
@@ -221,13 +244,13 @@ impl VpnApp {
                     self.active_session = None;
                     self.backend.clear_state();
                     self.state = ConnectionState::Disconnected;
-                    self.detail = "A conexão VPN foi encerrada.".into();
+                    self.detail = StatusDetail::Message(StatusMessage::ConnectionEnded);
                     return;
                 }
                 Err(error) => {
                     self.active_session = None;
                     self.state = ConnectionState::Error;
-                    self.detail = error.to_string();
+                    self.detail = StatusDetail::BackendError(error);
                     return;
                 }
             }
@@ -236,7 +259,7 @@ impl VpnApp {
         if self.state == ConnectionState::Connected && !self.backend.is_connected() {
             self.clear_active_session();
             self.state = ConnectionState::Disconnected;
-            self.detail = "A conexão VPN foi encerrada.".into();
+            self.detail = StatusDetail::Message(StatusMessage::ConnectionEnded);
         }
     }
 
@@ -245,6 +268,28 @@ impl VpnApp {
             let _ = session.poll();
         }
         self.backend.clear_state();
+    }
+
+    fn detail_text(&self) -> String {
+        let text = self.language.catalog();
+        match &self.detail {
+            StatusDetail::Message(message) => match message {
+                StatusMessage::AlreadyConnected => text.already_connected,
+                StatusMessage::EnterCredentials => text.enter_credentials,
+                StatusMessage::AuthorizeOperation => text.authorize_operation,
+                StatusMessage::NoConnection => text.no_connection,
+                StatusMessage::InvalidStateFile => text.invalid_state_file,
+                StatusMessage::ClosingTunnel => text.closing_tunnel,
+                StatusMessage::ConnectionVerified => text.connection_verified,
+                StatusMessage::ConnectionUnverified => text.connection_unverified,
+                StatusMessage::VpnDisconnected => text.vpn_disconnected,
+                StatusMessage::OperationInterrupted => text.operation_interrupted,
+                StatusMessage::ConnectionEnded => text.connection_ended,
+            }
+            .to_owned(),
+            StatusDetail::CredentialError(error) => text.credential_error(*error).to_owned(),
+            StatusDetail::BackendError(error) => text.backend_error(error),
+        }
     }
 }
 
@@ -290,6 +335,7 @@ impl App for VpnApp {
 
 impl VpnApp {
     fn render_card(&mut self, ui: &mut egui::Ui) {
+        let text = self.language.catalog();
         egui::Frame::new()
             .fill(egui::Color32::from_rgba_unmultiplied(235, 239, 236, 250))
             .stroke(egui::Stroke::new(
@@ -307,6 +353,25 @@ impl VpnApp {
             .show(ui, |ui| {
                 ui.set_width(FORM_WIDTH);
 
+                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                    let language_selector = egui::ComboBox::from_id_salt("application-language")
+                        .selected_text(self.language.native_name())
+                        .show_ui(ui, |ui| {
+                            for language in Language::ALL {
+                                ui.selectable_value(
+                                    &mut self.language,
+                                    language,
+                                    language.native_name(),
+                                );
+                            }
+                        });
+                    if language_selector.response.changed() {
+                        ui.ctx().request_repaint();
+                    }
+                    ui.label(egui::RichText::new(text.language).small());
+                });
+                ui.add_space(5.0);
+
                 centered_label(
                     ui,
                     FORM_WIDTH,
@@ -321,8 +386,7 @@ impl VpnApp {
                     ui,
                     FORM_WIDTH,
                     20.0,
-                    egui::RichText::new("Cliente gráfico para conexões seguras")
-                        .color(egui::Color32::from_rgb(74, 93, 82)),
+                    egui::RichText::new(text.subtitle).color(egui::Color32::from_rgb(74, 93, 82)),
                 );
                 ui.add_space(22.0);
 
@@ -332,11 +396,11 @@ impl VpnApp {
                         ui,
                         FORM_WIDTH,
                         18.0,
-                        egui::RichText::new("Servidor VPN").strong(),
+                        egui::RichText::new(text.server).strong(),
                     );
                     ui.add(
                         egui::TextEdit::singleline(&mut self.server)
-                            .hint_text("vpn.exemplo.org")
+                            .hint_text(text.server_hint)
                             .desired_width(FORM_WIDTH),
                     );
                     ui.add_space(12.0);
@@ -344,7 +408,7 @@ impl VpnApp {
                         ui,
                         FORM_WIDTH,
                         18.0,
-                        egui::RichText::new("Protocolo").strong(),
+                        egui::RichText::new(text.protocol).strong(),
                     );
                     egui::ComboBox::from_id_salt("vpn-protocol")
                         .width(FORM_WIDTH)
@@ -359,25 +423,37 @@ impl VpnApp {
                         ui,
                         FORM_WIDTH,
                         18.0,
-                        egui::RichText::new("Usuário").strong(),
+                        egui::RichText::new(text.username).strong(),
                     );
                     ui.add(
                         egui::TextEdit::singleline(&mut self.username)
-                            .hint_text("nome de usuário")
+                            .hint_text(text.username_hint)
                             .desired_width(FORM_WIDTH),
                     );
                     ui.add_space(12.0);
-                    centered_label(ui, FORM_WIDTH, 18.0, egui::RichText::new("Senha").strong());
+                    centered_label(
+                        ui,
+                        FORM_WIDTH,
+                        18.0,
+                        egui::RichText::new(text.password).strong(),
+                    );
                     ui.add(
                         egui::TextEdit::singleline(&mut *self.password)
                             .password(true)
-                            .hint_text("senha")
+                            .hint_text(text.password_hint)
                             .desired_width(FORM_WIDTH),
                     );
                 });
 
                 ui.add_space(16.0);
-                draw_connection_status(ui, self.state, &self.detail, FORM_WIDTH);
+                let detail = self.detail_text();
+                draw_connection_status(
+                    ui,
+                    text.connection_state(self.state),
+                    self.state,
+                    &detail,
+                    FORM_WIDTH,
+                );
                 ui.add_space(18.0);
                 self.action_button_rect = None;
                 self.render_primary_button(ui, busy);
@@ -389,7 +465,7 @@ impl VpnApp {
                     ui,
                     FORM_WIDTH,
                     30.0,
-                    egui::RichText::new("A senha não é salva nem exibida na linha de comando.")
+                    egui::RichText::new(text.security_notice)
                         .small()
                         .color(egui::Color32::from_rgb(88, 99, 92)),
                 );
@@ -397,12 +473,13 @@ impl VpnApp {
     }
 
     fn render_primary_button(&mut self, ui: &mut egui::Ui, busy: bool) {
+        let text = self.language.catalog();
         let response = match self.state {
             ConnectionState::Connected => centered_action_button(
                 ui,
                 !busy,
                 FORM_WIDTH,
-                egui::RichText::new("Desconectar")
+                egui::RichText::new(text.disconnect)
                     .strong()
                     .color(egui::Color32::WHITE),
                 egui::Color32::from_rgb(176, 41, 41),
@@ -411,7 +488,7 @@ impl VpnApp {
                 ui,
                 false,
                 FORM_WIDTH,
-                egui::RichText::new("Aguarde…")
+                egui::RichText::new(text.wait)
                     .strong()
                     .color(egui::Color32::from_rgb(87, 97, 91)),
                 egui::Color32::from_rgb(208, 216, 211),
@@ -420,7 +497,7 @@ impl VpnApp {
                 ui,
                 true,
                 FORM_WIDTH,
-                egui::RichText::new("Conectar à VPN")
+                egui::RichText::new(text.connect)
                     .strong()
                     .color(egui::Color32::WHITE),
                 egui::Color32::from_rgb(14, 122, 68),
