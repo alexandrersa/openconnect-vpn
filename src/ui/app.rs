@@ -330,17 +330,67 @@ impl App for VpnApp {
             .order(egui::Order::Foreground)
             .anchor(egui::Align2::CENTER_CENTER, egui::vec2(0.0, -8.0))
             .show(ctx, |ui| self.render_card(ui));
+
+        egui::Area::new(egui::Id::new("application-language"))
+            .order(egui::Order::Foreground)
+            .anchor(egui::Align2::RIGHT_TOP, egui::vec2(-20.0, 18.0))
+            .show(ctx, |ui| self.render_language_selector(ui));
     }
 }
 
 impl VpnApp {
+    fn render_language_selector(&mut self, ui: &mut egui::Ui) {
+        let text = self.language.catalog();
+        let theme = app_theme();
+        let (fill, text_color) = {
+            let visuals = ui.visuals();
+            (
+                visuals.window_fill.linear_multiply(0.9),
+                visuals.override_text_color.unwrap_or(PEWTER_BLUE),
+            )
+        };
+
+        egui::Frame::new()
+            .fill(fill)
+            .stroke(theme.stroke)
+            .corner_radius(10.0)
+            .inner_margin(egui::Margin::symmetric(9, 4))
+            .show(ui, |ui| {
+                ui.horizontal(|ui| {
+                    ui.label(egui::RichText::new(text.language).small().color(text_color));
+                    let selected_language = self.language;
+                    egui::ComboBox::from_id_salt("application-language-choice")
+                        .selected_text(selected_language.native_name())
+                        .show_ui(ui, |ui| {
+                            for language in Language::ALL {
+                                ui.selectable_value(
+                                    &mut self.language,
+                                    language,
+                                    language.native_name(),
+                                );
+                            }
+                        });
+                    if self.language != selected_language {
+                        ui.ctx().request_repaint();
+                    }
+                });
+            });
+    }
+
     fn render_card(&mut self, ui: &mut egui::Ui) {
         let text = self.language.catalog();
         let theme = app_theme();
-        let visuals = ui.visuals();
+        let (card_fill, text_color, heading_color) = {
+            let visuals = ui.visuals();
+            (
+                visuals.window_fill.linear_multiply(0.9),
+                visuals.override_text_color.unwrap_or(PEWTER_BLUE),
+                visuals.widgets.active.fg_stroke.color,
+            )
+        };
 
         egui::Frame::new()
-            .fill(visuals.window_fill.linear_multiply(0.9))
+            .fill(card_fill)
             .stroke(theme.stroke)
             .shadow(egui::Shadow {
                 offset: [0, 14],
@@ -353,29 +403,6 @@ impl VpnApp {
             .show(ui, |ui| {
                 ui.set_width(FORM_WIDTH);
 
-                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                    let language_selector = egui::ComboBox::from_id_salt("application-language")
-                        .selected_text(self.language.native_name())
-                        .show_ui(ui, |ui| {
-                            for language in Language::ALL {
-                                ui.selectable_value(
-                                    &mut self.language,
-                                    language,
-                                    language.native_name(),
-                                );
-                            }
-                        });
-                    if language_selector.response.changed() {
-                        ui.ctx().request_repaint();
-                    }
-                    ui.label(
-                        egui::RichText::new(text.language)
-                            .small()
-                            .color(visuals.override_text_color.unwrap()),
-                    );
-                });
-                ui.add_space(5.0);
-
                 centered_label(
                     ui,
                     FORM_WIDTH,
@@ -383,20 +410,19 @@ impl VpnApp {
                     egui::RichText::new("OpenConnect VPN")
                         .strong()
                         .text_style(egui::TextStyle::Heading)
-                        .color(visuals.widgets.active.fg_stroke.color),
+                        .color(heading_color),
                 );
                 ui.add_space(4.0);
                 centered_label(
                     ui,
                     FORM_WIDTH,
                     20.0,
-                    egui::RichText::new(text.subtitle).color(visuals.override_text_color.unwrap()),
+                    egui::RichText::new(text.subtitle).color(text_color),
                 );
                 ui.add_space(22.0);
 
                 let busy = self.is_busy();
                 ui.add_enabled_ui(!busy && self.state != ConnectionState::Connected, |ui| {
-                    let text_color = visuals.override_text_color.unwrap();
                     centered_label(
                         ui,
                         FORM_WIDTH,
@@ -564,6 +590,18 @@ mod tests {
 
     fn test_app() -> VpnApp {
         VpnApp::new(Arc::new(FakeBackend::default()))
+    }
+
+    #[test]
+    fn changing_language_translates_the_current_status_message() {
+        let mut app = test_app();
+
+        app.language = Language::English;
+
+        assert_eq!(
+            app.detail_text(),
+            "Enter the server, username, and password to start."
+        );
     }
 
     #[test]

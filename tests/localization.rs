@@ -46,4 +46,8 @@ fn given_a_localized_backend_error_when_switching_languages_then_its_message_cha
         Language::Mandarin.catalog().backend_error(&error),
         "未找到 OpenConnect。请安装 openconnect 软件包。"
     );
+    assert_eq!(
+        error.to_string(),
+        "O OpenConnect não foi encontrado. Instale o pacote openconnect."
+    );
 }

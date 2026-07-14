@@ -1,3 +1,5 @@
 mod vpn;
 
-pub use vpn::{SessionStatus, VpnBackend, VpnBackendError, VpnBackendResult, VpnSession};
+pub use vpn::{
+    BackendErrorMessage, SessionStatus, VpnBackend, VpnBackendError, VpnBackendResult, VpnSession,
+};
