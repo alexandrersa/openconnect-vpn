@@ -1,37 +1,37 @@
-# Solução de Problemas
+# Troubleshooting
 
-## O aplicativo diz que OpenConnect não foi encontrado
+## The application says OpenConnect was not found
 
-Instale OpenConnect pelo gerenciador de pacotes da distribuição.
+Install OpenConnect using your distribution's package manager.
 
-## O aplicativo diz que pkexec não foi encontrado
+## The application says pkexec was not found
 
-Instale Polkit. No Linux, a criação da interface de rede exige privilégio administrativo.
+Install Polkit. On Linux, creating the network interface requires administrative privilege.
 
-## O diálogo de autorização não aparece
+## The authorization dialog does not appear
 
-Confirme que existe um agente gráfico do Polkit em execução. Em sessões minimalistas, esse agente pode não iniciar automaticamente.
+Confirm that a graphical Polkit agent is running. In minimalist sessions, this agent may not start automatically.
 
-## A VPN conecta, mas o acesso interno não funciona
+## The VPN connects, but internal access does not work
 
-Verifique:
+Check:
 
-- protocolo selecionado;
-- endereço do servidor;
-- DNS recebido pela VPN;
-- rotas instaladas pelo script do OpenConnect;
-- políticas do servidor.
+- selected protocol;
+- server address;
+- DNS received by the VPN;
+- routes installed by the OpenConnect script;
+- server policies.
 
-## Credenciais funcionam no terminal, mas não na UI
+## Credentials work in the terminal, but not in the UI
 
-Compare o comando equivalente:
+Compare the equivalent command:
 
 ```bash
-sudo openconnect --protocol=<protocolo> <servidor> -u <usuario>
+sudo openconnect --protocol=<protocol> <server> -u <user>
 ```
 
-Na UI, a senha é enviada por `stdin`; ela não aparece no comando.
+In the UI, the password is sent via `stdin`; it does not appear in the command.
 
-## Autenticação com MFA ou SSO externo
+## Authentication with MFA or external SSO
 
-A versão atual cobre senha via stdin. Ambientes com MFA, SSO via navegador, certificados ou formulários customizados podem exigir suporte adicional.
+The current version covers password via stdin. Environments with MFA, SSO via browser, certificates, or custom forms may require additional support.

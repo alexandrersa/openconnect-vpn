@@ -6,45 +6,57 @@ use zeroize::Zeroizing;
 pub enum VpnProtocol {
     #[default]
     AnyConnect,
-    GlobalProtect,
+    CiscoSecure,
+    Ocserv,
+    PanGp,
+    PrismaAccess,
     Pulse,
-    Fortinet,
-    F5,
+    Ivanti,
     Juniper,
+    F5,
+    Fortinet,
     Array,
 }
 
 impl VpnProtocol {
-    pub const ALL: [Self; 7] = [
+    pub const ALL: [Self; 11] = [
         Self::AnyConnect,
-        Self::GlobalProtect,
+        Self::CiscoSecure,
+        Self::Ocserv,
+        Self::PanGp,
+        Self::PrismaAccess,
         Self::Pulse,
-        Self::Fortinet,
-        Self::F5,
+        Self::Ivanti,
         Self::Juniper,
+        Self::F5,
+        Self::Fortinet,
         Self::Array,
     ];
 
     pub fn label(self) -> &'static str {
         match self {
             Self::AnyConnect => "Cisco AnyConnect / OpenConnect",
-            Self::GlobalProtect => "GlobalProtect",
-            Self::Pulse => "Pulse Connect Secure",
-            Self::Fortinet => "Fortinet",
-            Self::F5 => "F5 BIG-IP",
+            Self::CiscoSecure => "Cisco Secure Client (AnyConnect)",
+            Self::Ocserv => "OpenConnect Server (ocserv)",
+            Self::PanGp => "Palo Alto Networks GlobalProtect",
+            Self::PrismaAccess => "Prisma Access (GlobalProtect)",
+            Self::Pulse => "Pulse Secure",
+            Self::Ivanti => "Ivanti Connect Secure",
             Self::Juniper => "Juniper Network Connect",
-            Self::Array => "Array Networks",
+            Self::F5 => "F5 BIG-IP",
+            Self::Fortinet => "Fortinet FortiGate",
+            Self::Array => "Array Networks AG SSL VPN",
         }
     }
 
     pub fn openconnect_name(self) -> &'static str {
         match self {
-            Self::AnyConnect => "anyconnect",
-            Self::GlobalProtect => "gp",
-            Self::Pulse => "pulse",
-            Self::Fortinet => "fortinet",
-            Self::F5 => "f5",
+            Self::AnyConnect | Self::CiscoSecure | Self::Ocserv => "anyconnect",
+            Self::PanGp | Self::PrismaAccess => "gp",
+            Self::Pulse | Self::Ivanti => "pulse",
             Self::Juniper => "nc",
+            Self::F5 => "f5",
+            Self::Fortinet => "fortinet",
             Self::Array => "array",
         }
     }

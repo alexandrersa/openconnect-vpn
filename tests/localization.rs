@@ -5,6 +5,11 @@ use openconnect_vpn_gui::{
 };
 
 #[test]
+fn given_a_new_app_when_selecting_the_default_language_then_it_is_english() {
+    assert_eq!(Language::default(), Language::English);
+}
+
+#[test]
 fn given_each_supported_language_when_loading_its_catalog_then_essential_text_is_available() {
     for language in Language::ALL {
         let catalog = language.catalog();

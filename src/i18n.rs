@@ -5,8 +5,8 @@ use crate::{
 
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub enum Language {
-    #[default]
     Portuguese,
+    #[default]
     English,
     French,
     Spanish,

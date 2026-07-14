@@ -1,6 +1,9 @@
 use eframe::egui;
 
-use crate::domain::ConnectionState;
+use crate::{
+    domain::ConnectionState,
+    ui::colors::{DANGER_RED, SUCCESS_GREEN, TEXT_PRIMARY, TEXT_SECONDARY, WARNING_AMBER},
+};
 
 pub fn centered_label(ui: &mut egui::Ui, width: f32, height: f32, text: egui::RichText) {
     ui.add_sized(
@@ -45,17 +48,13 @@ pub fn draw_connection_status(
                 18.0,
                 egui::RichText::new(state_label)
                     .size(13.0)
-                    .color(egui::Color32::from_rgb(51, 70, 59)),
+                    .color(TEXT_PRIMARY),
             );
 
             let (rect, _) = ui.allocate_exact_size(egui::vec2(82.0, 20.0), egui::Sense::hover());
             let center_x = rect.center().x;
             let inactive = egui::Color32::from_rgb(205, 215, 208);
-            let colors = [
-                egui::Color32::from_rgb(220, 38, 38),
-                egui::Color32::from_rgb(217, 119, 6),
-                egui::Color32::from_rgb(22, 163, 74),
-            ];
+            let colors = [DANGER_RED, WARNING_AMBER, SUCCESS_GREEN];
             for (index, color) in colors.into_iter().enumerate() {
                 let x = center_x + ((index as f32) - 1.0) * 24.0;
                 let fill = if index == state.signal_index() {
@@ -71,9 +70,7 @@ pub fn draw_connection_status(
                 ui,
                 width,
                 36.0,
-                egui::RichText::new(detail)
-                    .size(11.5)
-                    .color(egui::Color32::from_rgb(76, 91, 82)),
+                egui::RichText::new(detail).size(11.5).color(TEXT_SECONDARY),
             );
         },
     );

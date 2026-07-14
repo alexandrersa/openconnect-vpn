@@ -54,7 +54,7 @@ fn given_connection_state_when_deciding_primary_action_then_action_matches_statu
 
 #[test]
 fn given_openconnect_command_when_building_args_then_server_protocol_and_stdin_are_used() {
-    let args = openconnect_args("vpn.example.org", VpnProtocol::GlobalProtect, "alice");
+    let args = openconnect_args("vpn.example.org", VpnProtocol::PanGp, "alice");
 
     assert!(args.iter().any(|arg| arg == "--protocol=gp"));
     assert!(args.iter().any(|arg| arg == "vpn.example.org"));
@@ -63,6 +63,25 @@ fn given_openconnect_command_when_building_args_then_server_protocol_and_stdin_a
     assert!(args.iter().any(|arg| arg == "--non-inter"));
     assert!(!args.iter().any(|arg| arg == "--background"));
     assert!(!args.iter().any(|arg| arg == "--pid-file"));
+}
+
+#[test]
+fn given_provider_profiles_when_building_args_then_each_uses_its_supported_protocol() {
+    let expected_protocols = [
+        (VpnProtocol::CiscoSecure, "anyconnect"),
+        (VpnProtocol::Ocserv, "anyconnect"),
+        (VpnProtocol::PrismaAccess, "gp"),
+        (VpnProtocol::Ivanti, "pulse"),
+    ];
+
+    for (profile, openconnect_protocol) in expected_protocols {
+        let args = openconnect_args("vpn.example.org", profile, "alice");
+        assert!(
+            args.iter()
+                .any(|arg| arg == &format!("--protocol={openconnect_protocol}")),
+            "{profile:?} deveria usar {openconnect_protocol}"
+        );
+    }
 }
 
 #[test]

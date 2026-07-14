@@ -1,6 +1,6 @@
-# Build e Distribuição
+# Build and Release
 
-## Build Local
+## Local Build
 
 Linux:
 
@@ -8,7 +8,7 @@ Linux:
 cargo build --release
 ```
 
-O binário é gerado em:
+The binary is generated at:
 
 ```text
 target/release/openconnect-vpn-gui
@@ -20,13 +20,13 @@ Windows:
 cargo build --release
 ```
 
-O binário é gerado em:
+The binary is generated at:
 
 ```text
 target\release\openconnect-vpn-gui.exe
 ```
 
-macOS universal:
+Universal macOS:
 
 ```bash
 rustup target add aarch64-apple-darwin x86_64-apple-darwin
@@ -40,26 +40,26 @@ lipo -create -output dist/openconnect-vpn-gui \
 
 ## GitHub Actions
 
-O workflow `CI` executa:
+The `CI` workflow executes:
 
 - `cargo fmt --check`;
 - `cargo test --all-targets`;
 - `cargo clippy --all-targets -- -D warnings`;
-- build nativo em Linux, Windows e macOS;
-- build em containers Ubuntu/Fedora/Arch/Void;
-- checagem FreeBSD via `cross`.
+- native build on Linux, Windows, and macOS;
+- build in Ubuntu/Fedora/Arch/Void containers;
+- FreeBSD check via `cross`.
 
-O workflow `Release binaries` gera artefatos para distribuição.
+The `Release packages` workflow verifies formatting, tests, and Clippy before creating platform archives. It publishes `.tar.gz` packages for Unix-like platforms, a `.zip` package for Windows, and a `SHA256SUMS` file in the GitHub Release.
 
-## Publicar Release
+## Publish Release
 
 ```bash
 git tag v0.1.0
 git push origin v0.1.0
 ```
 
-Depois baixe os artefatos em GitHub Actions e anexe-os a uma release pública.
+The workflow publishes the GitHub Release and its packages automatically. For a manual release, run **Release packages** in GitHub Actions and enter the intended tag.
 
-## Observação Sobre Compatibilidade
+## Compatibility Note
 
-Binários Linux são gerados por distribuição para reduzir diferenças de bibliotecas do sistema. Mesmo assim, o usuário final precisa instalar OpenConnect e Polkit.
+Linux binaries are generated per distribution to reduce system library differences. Even so, the end-user needs to install OpenConnect and Polkit.

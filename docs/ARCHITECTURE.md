@@ -1,35 +1,35 @@
-# Arquitetura
+# Architecture
 
-OpenConnect VPN GUI é organizado em camadas para preservar baixo acoplamento e facilitar contribuições da comunidade.
+OpenConnect VPN GUI is organized in layers to preserve low coupling and facilitate community contributions.
 
-## Camadas
+## Layers
 
-- `domain`: regras puras de credenciais, servidor, protocolo, estados de conexão e ação primária.
-- `application`: portas da aplicação. Define `VpnBackend` e `VpnSession`, contratos que a UI usa sem conhecer detalhes de processo ou sistema operacional.
-- `infrastructure`: adaptadores concretos. A implementação atual chama OpenConnect via Polkit no Linux.
-- `ui`: composição visual em egui/eframe, tema e widgets reutilizáveis.
-- `tests`: cenários BDD com nomes `given_when_then`.
+- `domain`: pure rules for credentials, server, protocol, connection states, and primary action.
+- `application`: application ports. Defines `VpnBackend` and `VpnSession`, contracts that the UI uses without knowing process or operating system details.
+- `infrastructure`: concrete adapters. The current implementation calls OpenConnect via Polkit on Linux.
+- `ui`: visual composition in egui/eframe, theme, and reusable widgets.
+- `tests`: BDD scenarios with `given_when_then` names.
 
-## Padrões Aplicados
+## Applied Patterns
 
-- Ports and Adapters: a UI depende de `VpnBackend`, não de `Command`.
-- Dependency Inversion: `VpnApp` recebe `Arc<dyn VpnBackend>`.
-- Strategy: o protocolo selecionado define o argumento `--protocol` usado pelo OpenConnect.
-- Single Responsibility: validação, estado de conexão, processo OpenConnect e renderização estão separados.
-- BDD: regras críticas são descritas como comportamento observável em `tests/vpn_behaviour.rs`.
+- Ports and Adapters: the UI depends on `VpnBackend`, not `Command`.
+- Dependency Inversion: `VpnApp` receives `Arc<dyn VpnBackend>`.
+- Strategy: the selected protocol defines the `--protocol` argument used by OpenConnect.
+- Single Responsibility: validation, connection state, OpenConnect process, and rendering are separate.
+- BDD: critical rules are described as observable behavior in `tests/vpn_behaviour.rs`.
 
-## Fluxo de Conexão
+## Connection Flow
 
-1. A UI coleta servidor, protocolo, usuário e senha.
-2. O domínio valida entradas mínimas.
-3. A aplicação chama a porta `VpnBackend`.
-4. O adaptador OpenConnect executa `pkexec openconnect`.
-5. A senha é enviada via `stdin`.
-6. O PID do processo é registrado para permitir desconexão segura.
+1. The UI collects server, protocol, username, and password.
+2. The domain validates minimal inputs.
+3. The application calls the `VpnBackend` port.
+4. The OpenConnect adapter executes `pkexec openconnect`.
+5. The password is sent via `stdin`.
+6. The process PID is registered to allow safe disconnection.
 
-## Segurança
+## Security
 
-- A senha não é armazenada.
-- A senha não aparece nos argumentos do processo.
-- A desconexão valida o PID antes de enviar `SIGTERM`.
-- O arquivo de PID fica no runtime directory do usuário quando disponível.
+- The password is not stored.
+- The password does not appear in the process arguments.
+- Disconnection validates the PID before sending `SIGTERM`.
+- The PID file is in the user's runtime directory when available.

@@ -23,6 +23,7 @@ jobs:
       - run: cargo fmt --check
       - run: cargo test --all-targets
       - run: cargo clippy --all-targets -- -D warnings
+      - run: cargo package --no-verify
 
   native-build:
     name: Native build / ${{ matrix.os }}

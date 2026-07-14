@@ -1,13 +1,13 @@
-# Contribuição
+# Contributing
 
-Contribuições são bem-vindas.
+Contributions are welcome.
 
-## Fluxo Recomendado
+## Recommended Flow
 
-1. Abra uma issue descrevendo o problema ou proposta.
-2. Crie uma branch curta e objetiva.
-3. Mantenha mudanças pequenas e testáveis.
-4. Rode a validação local antes de abrir pull request.
+1. Open an issue describing the problem or proposal.
+2. Create a short and objective branch.
+3. Keep changes small and testable.
+4. Run local validation before opening a pull request.
 
 ```bash
 cargo fmt --check
@@ -15,14 +15,14 @@ cargo test --all-targets
 cargo clippy --all-targets -- -D warnings
 ```
 
-## Diretrizes de Código
+## Code Guidelines
 
-- Regras puras ficam em `domain`.
-- Contratos ficam em `application`.
-- Integrações com sistema operacional ficam em `infrastructure`.
-- UI fica em `ui`.
-- Novas regras devem ter testes BDD em `tests/`.
+- Pure rules go in `domain`.
+- Contracts go in `application`.
+- Operating system integrations go in `infrastructure`.
+- UI goes in `ui`.
+- New rules should have BDD tests in `tests/`.
 
-## Segurança
+## Security
 
-Não registre senha, token, cookie de autenticação ou dados sensíveis em logs, arquivos de configuração ou mensagens de erro.
+Do not log passwords, tokens, authentication cookies, or sensitive data in logs, configuration files, or error messages.

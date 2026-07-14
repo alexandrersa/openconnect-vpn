@@ -2,12 +2,18 @@
 name = "openconnect-vpn-gui"
 version = "0.1.0"
 edition = "2024"
-description = "Cliente gráfico genérico para VPNs compatíveis com OpenConnect"
+description = "Secure cross-platform OpenConnect VPN GUI for AnyConnect, GlobalProtect, Pulse, Fortinet, F5, Juniper, and Array VPNs."
 license = "MIT"
+readme = "README.md"
+keywords = ["vpn", "openconnect", "anyconnect", "globalprotect", "fortinet"]
+categories = ["gui", "network-programming"]
+homepage = "https://github.com/alexandrersa/openconnect-vpn"
+repository = "https://github.com/alexandrersa/openconnect-vpn"
+documentation = "https://github.com/alexandrersa/openconnect-vpn#readme"
 
 [dependencies]
 eframe = { version = "0.31", default-features = false, features = ["default_fonts", "glow", "wayland", "x11"] }
-egui_extras = { version = "0.31", default-features = false, features = ["image"] }
+egui_extras = { version = "0.31", default-features = false, features = ["image", "svg"] }
 image = { version = "0.25", default-features = false, features = ["jpeg", "png"] }
 zeroize = "1.8"
 

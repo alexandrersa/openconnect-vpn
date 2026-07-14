@@ -1,51 +1,51 @@
-# Guia do Usuário
+# User Guide
 
-## Antes de Começar
+## Before You Start
 
-Tenha em mãos:
+Have on hand:
 
-- endereço do servidor VPN;
-- protocolo exigido pelo provedor;
-- usuário;
-- senha;
-- OpenConnect instalado no sistema.
+- VPN server address;
+- protocol required by the provider;
+- username;
+- password;
+- OpenConnect installed on the system.
 
-No Linux, também é necessário um agente gráfico do Polkit. Exemplos comuns incluem `polkit-gnome`, `lxqt-policykit`, `mate-polkit` ou o agente já integrado ao ambiente desktop.
+On Linux, a graphical Polkit agent is also required. Common examples include `polkit-gnome`, `lxqt-policykit`, `mate-polkit`, or the agent already integrated into the desktop environment.
 
-## Idioma
+## Language
 
-Use o seletor de idioma no canto superior direito da janela para alterar a
-interface. Estão disponíveis português, inglês, francês, espanhol, alemão,
-japonês, mandarim (chinês simplificado), holandês e esperanto. A escolha vale
-imediatamente para os rótulos, estados, validações e mensagens da aplicação
-durante a sessão atual.
+Use the language selector in the upper right corner of the window to change the
+interface. Portuguese, English, French, Spanish, German, Japanese, Mandarin
+(simplified Chinese), Dutch, and Esperanto are available. English is the
+default. The choice applies immediately to the application's labels, states,
+validations, and messages during the current session.
 
-## Campos da Interface
+## Interface Fields
 
-- `Servidor VPN`: endereço informado pelo administrador, como `vpn.example.org`.
-- `Protocolo`: tipo de VPN usado pelo servidor.
-- `Usuário`: login da conta VPN.
-- `Senha`: senha da conta VPN.
+- `VPN Server`: address provided by the administrator, such as `vpn.example.org`.
+- `Protocol`: type of VPN used by the server.
+- `Username`: VPN account login.
+- `Password`: VPN account password.
 
-## Conectar
+## Connect
 
-1. Preencha os campos.
-2. Clique em `Conectar à VPN` ou pressione `Enter`.
-3. Autorize a operação no diálogo do sistema.
-4. Aguarde o status ficar verde.
+1. Fill in the fields.
+2. Click `Connect to VPN` or press `Enter`.
+3. Authorize the operation in the system dialog.
+4. Wait for the status to turn green.
 
-## Desconectar
+## Disconnect
 
-Com a VPN ativa, clique em `Desconectar` ou pressione `Enter`.
+With the VPN active, click `Disconnect` or press `Enter`.
 
-## Protocolos
+## Protocols
 
-- `Cisco AnyConnect / OpenConnect`: padrão OpenConnect mais comum.
-- `GlobalProtect`: usado por gateways Palo Alto.
-- `Pulse Connect Secure`: usado por Pulse/Ivanti.
-- `Fortinet`: usado por FortiGate.
-- `F5 BIG-IP`: usado por F5.
-- `Juniper Network Connect`: usado por Juniper.
-- `Array Networks`: usado por Array.
+- `Cisco AnyConnect / OpenConnect`, `Cisco Secure Client`, and `OpenConnect Server (ocserv)`: use the `anyconnect` protocol.
+- `Palo Alto Networks GlobalProtect` and `Prisma Access`: use the `gp` protocol.
+- `Pulse Secure` and `Ivanti Connect Secure`: use the `pulse` protocol.
+- `Fortinet FortiGate`: uses the `fortinet` protocol.
+- `F5 BIG-IP`: used by F5.
+- `Juniper Network Connect`: used by Juniper.
+- `Array Networks AG SSL VPN`: uses the `array` protocol.
 
-Se o administrador não informou o protocolo, teste primeiro `Cisco AnyConnect / OpenConnect`.
+If the administrator did not provide the protocol, first test `Cisco AnyConnect / OpenConnect`.
