@@ -18,7 +18,8 @@ use crate::{
     },
     i18n::Language,
     ui::{
-        theme::FORM_WIDTH,
+        colors::{DANGER_RED, DISABLED_GRAY, PEWTER_BLUE, SUCCESS_GREEN, WHITE_SMOKE},
+        theme::{FORM_WIDTH, app_theme},
         widgets::{centered_action_button, centered_label, draw_connection_status},
     },
 };
@@ -311,20 +312,19 @@ impl App for VpnApp {
             ctx.request_repaint_after(POLL_INTERVAL);
         }
 
-        egui::CentralPanel::default()
-            .frame(egui::Frame::new().fill(egui::Color32::from_rgb(218, 224, 220)))
-            .show(ctx, |ui| {
-                let background_rect = ui.max_rect();
-                egui::Image::new(egui::include_image!("../../assets/vpn-background.jpg"))
-                    .fit_to_exact_size(background_rect.size())
-                    .tint(egui::Color32::from_rgba_unmultiplied(172, 188, 178, 150))
-                    .paint_at(ui, background_rect);
-                ui.painter().rect_filled(
-                    background_rect,
-                    0.0,
-                    egui::Color32::from_rgba_unmultiplied(82, 92, 86, 116),
-                );
-            });
+        egui::CentralPanel::default().show(ctx, |ui| {
+            let background_rect = ui.max_rect();
+            let visuals = ui.visuals();
+            egui::Image::new(egui::include_image!("../../assets/vpn-background.jpg"))
+                .fit_to_exact_size(background_rect.size())
+                .tint(visuals.window_fill)
+                .paint_at(ui, background_rect);
+            ui.painter().rect_filled(
+                background_rect,
+                0.0,
+                visuals.window_fill.linear_multiply(0.6),
+            );
+        });
 
         egui::Area::new(egui::Id::new("openconnect-vpn-card"))
             .order(egui::Order::Foreground)
@@ -336,19 +336,19 @@ impl App for VpnApp {
 impl VpnApp {
     fn render_card(&mut self, ui: &mut egui::Ui) {
         let text = self.language.catalog();
+        let theme = app_theme();
+        let visuals = ui.visuals();
+
         egui::Frame::new()
-            .fill(egui::Color32::from_rgba_unmultiplied(235, 239, 236, 250))
-            .stroke(egui::Stroke::new(
-                1.0_f32,
-                egui::Color32::from_rgba_unmultiplied(255, 255, 255, 150),
-            ))
+            .fill(visuals.window_fill.linear_multiply(0.9))
+            .stroke(theme.stroke)
             .shadow(egui::Shadow {
                 offset: [0, 14],
                 blur: 30,
                 spread: 0,
                 color: egui::Color32::from_rgba_unmultiplied(18, 32, 24, 86),
             })
-            .corner_radius(22.0)
+            .corner_radius(theme.corner_radius)
             .inner_margin(egui::Margin::symmetric(34, 26))
             .show(ui, |ui| {
                 ui.set_width(FORM_WIDTH);
@@ -368,7 +368,11 @@ impl VpnApp {
                     if language_selector.response.changed() {
                         ui.ctx().request_repaint();
                     }
-                    ui.label(egui::RichText::new(text.language).small());
+                    ui.label(
+                        egui::RichText::new(text.language)
+                            .small()
+                            .color(visuals.override_text_color.unwrap()),
+                    );
                 });
                 ui.add_space(5.0);
 
@@ -378,25 +382,26 @@ impl VpnApp {
                     34.0,
                     egui::RichText::new("OpenConnect VPN")
                         .strong()
-                        .size(24.0)
-                        .color(egui::Color32::from_rgb(14, 93, 52)),
+                        .text_style(egui::TextStyle::Heading)
+                        .color(visuals.widgets.active.fg_stroke.color),
                 );
                 ui.add_space(4.0);
                 centered_label(
                     ui,
                     FORM_WIDTH,
                     20.0,
-                    egui::RichText::new(text.subtitle).color(egui::Color32::from_rgb(74, 93, 82)),
+                    egui::RichText::new(text.subtitle).color(visuals.override_text_color.unwrap()),
                 );
                 ui.add_space(22.0);
 
                 let busy = self.is_busy();
                 ui.add_enabled_ui(!busy && self.state != ConnectionState::Connected, |ui| {
+                    let text_color = visuals.override_text_color.unwrap();
                     centered_label(
                         ui,
                         FORM_WIDTH,
                         18.0,
-                        egui::RichText::new(text.server).strong(),
+                        egui::RichText::new(text.server).strong().color(text_color),
                     );
                     ui.add(
                         egui::TextEdit::singleline(&mut self.server)
@@ -408,7 +413,9 @@ impl VpnApp {
                         ui,
                         FORM_WIDTH,
                         18.0,
-                        egui::RichText::new(text.protocol).strong(),
+                        egui::RichText::new(text.protocol)
+                            .strong()
+                            .color(text_color),
                     );
                     egui::ComboBox::from_id_salt("vpn-protocol")
                         .width(FORM_WIDTH)
@@ -423,7 +430,9 @@ impl VpnApp {
                         ui,
                         FORM_WIDTH,
                         18.0,
-                        egui::RichText::new(text.username).strong(),
+                        egui::RichText::new(text.username)
+                            .strong()
+                            .color(text_color),
                     );
                     ui.add(
                         egui::TextEdit::singleline(&mut self.username)
@@ -435,7 +444,9 @@ impl VpnApp {
                         ui,
                         FORM_WIDTH,
                         18.0,
-                        egui::RichText::new(text.password).strong(),
+                        egui::RichText::new(text.password)
+                            .strong()
+                            .color(text_color),
                     );
                     ui.add(
                         egui::TextEdit::singleline(&mut *self.password)
@@ -467,7 +478,7 @@ impl VpnApp {
                     30.0,
                     egui::RichText::new(text.security_notice)
                         .small()
-                        .color(egui::Color32::from_rgb(88, 99, 92)),
+                        .color(PEWTER_BLUE),
                 );
             });
     }
@@ -481,17 +492,15 @@ impl VpnApp {
                 FORM_WIDTH,
                 egui::RichText::new(text.disconnect)
                     .strong()
-                    .color(egui::Color32::WHITE),
-                egui::Color32::from_rgb(176, 41, 41),
+                    .color(WHITE_SMOKE),
+                DANGER_RED,
             ),
             ConnectionState::Connecting | ConnectionState::Disconnecting => centered_action_button(
                 ui,
                 false,
                 FORM_WIDTH,
-                egui::RichText::new(text.wait)
-                    .strong()
-                    .color(egui::Color32::from_rgb(87, 97, 91)),
-                egui::Color32::from_rgb(208, 216, 211),
+                egui::RichText::new(text.wait).strong().color(PEWTER_BLUE),
+                DISABLED_GRAY,
             ),
             ConnectionState::Disconnected | ConnectionState::Error => centered_action_button(
                 ui,
@@ -499,8 +508,8 @@ impl VpnApp {
                 FORM_WIDTH,
                 egui::RichText::new(text.connect)
                     .strong()
-                    .color(egui::Color32::WHITE),
-                egui::Color32::from_rgb(14, 122, 68),
+                    .color(WHITE_SMOKE),
+                SUCCESS_GREEN,
             ),
         };
 

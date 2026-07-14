@@ -79,13 +79,13 @@ pub fn configure_visuals(ctx: &egui::Context) {
         egui::FontId::new(12.0, egui::FontFamily::Proportional),
     );
 
-    let mut widgets = &mut style.visuals.widgets;
+    let widgets = &mut style.visuals.widgets;
     widgets.hovered.expansion = 1.0;
     widgets.active.expansion = 1.0;
     widgets.open.expansion = 1.0;
     widgets.inactive.weak_bg_fill = DISABLED_GRAY;
 
-    let mut combo_box = &mut style.spacing.combo_height;
+    let combo_box = &mut style.spacing.combo_height;
     *combo_box = 32.0;
 
     ctx.set_visuals(visuals);

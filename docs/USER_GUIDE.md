@@ -12,6 +12,14 @@ Tenha em mãos:
 
 No Linux, também é necessário um agente gráfico do Polkit. Exemplos comuns incluem `polkit-gnome`, `lxqt-policykit`, `mate-polkit` ou o agente já integrado ao ambiente desktop.
 
+## Idioma
+
+Use o seletor de idioma no canto superior direito da janela para alterar a
+interface. Estão disponíveis português, inglês, francês, espanhol, alemão,
+japonês, mandarim (chinês simplificado), holandês e esperanto. A escolha vale
+imediatamente para os rótulos, estados, validações e mensagens da aplicação
+durante a sessão atual.
+
 ## Campos da Interface
 
 - `Servidor VPN`: endereço informado pelo administrador, como `vpn.example.org`.
