@@ -433,6 +433,7 @@ impl VpnApp {
                     );
                     egui::ComboBox::from_id_salt("vpn-protocol")
                         .width(FORM_WIDTH)
+                        .height(320.0)
                         .selected_text(self.protocol.label())
                         .show_ui(ui, |ui| {
                             for protocol in VpnProtocol::ALL {

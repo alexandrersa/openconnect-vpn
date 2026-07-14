@@ -106,7 +106,7 @@ pub fn configure_visuals(ctx: &egui::Context) {
     widgets.inactive.weak_bg_fill = DISABLED_GRAY;
 
     let combo_box = &mut style.spacing.combo_height;
-    *combo_box = 32.0;
+    *combo_box = 280.0;
 
     ctx.set_visuals(visuals);
     ctx.set_style(style);
